@@ -9,38 +9,40 @@ import (
     _"fmt"
 )
 
-type Attendee struct {
+type room struct {
+    Name   string `json:"name"`
+    Queue  queue  `json:"queue"`
+}
+
+type queue struct {
+   TurnList []turn `json:"turnList"`
+}
+
+type turn struct {
+    Attendee attendee `json:"attendee"`
+}    
+
+type attendee struct {
     Name  string `json:"name"`
 }
 
-type Room struct {
-    Name   string `json:"name"`
-    Queue  Queue  `json:"queue"`
-}
+var rooms []room
 
-type Queue struct {
-   TurnList turnList `json:"turnList"`
-}
-
-type turnList []Attendee
-
-var room []Room
-
-// Display all from the room var
+// Display all from the rooms var
 func GetRooms(w http.ResponseWriter, r *http.Request) {
-    json.NewEncoder(w).Encode(room)
+    json.NewEncoder(w).Encode(rooms)
 }
 
 // Display a single data
 func GetRoom(w http.ResponseWriter, r *http.Request) {
     params := mux.Vars(r)
-    for _, item := range room {
+    for _, item := range rooms {
         if item.Name == params["name"] {
             json.NewEncoder(w).Encode(item)
             return
         }
     }
-    json.NewEncoder(w).Encode(&Room{})
+    json.NewEncoder(w).Encode(&room{})
 }
 
 /*  create a new item
@@ -68,9 +70,9 @@ func DeletePerson(w http.ResponseWriter, r *http.Request) {
 // main function to boot up everything
 func main() {
     router := mux.NewRouter()
-    room = append(room, Room{Name: "Monkey Island", Queue: Queue{TurnList: []Attendee{{Name: "Perico"}, {Name: "Antoñico"}}}})
-    room = append(room, Room{Name: "Gotham", Queue: Queue{TurnList: []Attendee{}}})    
-    room = append(room, Room{Name: "New New York", Queue: Queue{TurnList: []Attendee{}}}) 
+    rooms = append(rooms, room{Name: "Monkey Island", Queue: queue{TurnList: []turn{{Attendee: attendee{Name: "Maxi"}}, {Attendee: attendee{Name: "Manu"}}}}})
+    rooms = append(rooms, room{Name: "Gotham", Queue: queue{TurnList: []turn{{Attendee: attendee{Name: "Maxi"}}, {Attendee: attendee{Name: "Manu"}}}}})
+    rooms = append(rooms, room{Name: "New New York", Queue: queue{TurnList: []turn{{Attendee: attendee{Name: "Maxi"}}, {Attendee: attendee{Name: "Manu"}}}}})
     router.HandleFunc("/room", GetRooms).Methods("GET")    
     router.HandleFunc("/room/{name}", GetRoom).Methods("GET")
 //    router.HandleFunc("/room/{name}/queue", EnQueue).Methods("POST")

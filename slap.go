@@ -5,7 +5,7 @@ import (
     "github.com/gorilla/mux"
     "log"
     "net/http"
-     _"bytes"
+    _"bytes"
     _"fmt"
 )
 
@@ -26,57 +26,77 @@ type attendee struct {
     Name  string `json:"name"`
 }
 
-var rooms []room
+//var rooms []room
 
+var rooms map[string]*room
+ 
 // Display all from the rooms var
-func GetRooms(w http.ResponseWriter, r *http.Request) {
+func DisplayRooms(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(rooms)
 }
 
 // Display a single data
-func GetRoom(w http.ResponseWriter, r *http.Request) {
+func DisplayRoom(w http.ResponseWriter, r *http.Request) {
     params := mux.Vars(r)
-    for _, item := range rooms {
-        if item.Name == params["name"] {
-            json.NewEncoder(w).Encode(item)
-            return
-        }
+    if room, ok := rooms[params["name"]]; ok {
+      json.NewEncoder(w).Encode(room)
+      return
     }
     json.NewEncoder(w).Encode(&room{})
 }
 
-/*  create a new item
-func CreatePerson(w http.ResponseWriter, r *http.Request) {
-    params := mux.Vars(r)
-    var person Person
-    _ = json.NewDecoder(r.Body).Decode(&person)
-    person.ID = params["id"]
-    people = append(people, person)
-    json.NewEncoder(w).Encode(people)
-} */
-
-/* Delete an item
-func DeletePerson(w http.ResponseWriter, r *http.Request) {
-    params := mux.Vars(r)
-    for index, item := range people {
-        if item.ID == params["id"] {
-            people = append(people[:index], people[index+1:]...)
-            break
-        }
-        json.NewEncoder(w).Encode(people)
+func EnQueue (w http.ResponseWriter, r *http.Request) {
+    type attendee_id struct {
+        Attendee_id string `json:"attendee_id"`
+    } 
+    
+    var att attendee    
+    params := mux.Vars(r)    
+    if room, ok := rooms[params["name"]]; ok {
+      var atid attendee_id
+      _ = json.NewDecoder(r.Body).Decode(&atid)
+      if  atid.Attendee_id != "" {
+        att = attendee{Name: atid.Attendee_id}
+        room.Queue.TurnList = append(room.Queue.TurnList, turn{att})
+      }
     }
-}*/
+    json.NewEncoder(w).Encode(att)
+}
+    
+func DeQueue(w http.ResponseWriter, r *http.Request) {
+  var att attendee
+  params := mux.Vars(r)
+  if room, ok := rooms[params["name"]]; ok {
+    att = room.Queue.TurnList[0].Attendee
+    room.Queue.TurnList = room.Queue.TurnList[1:]
+  }
+  json.NewEncoder(w).Encode(att)  
+}   
 
+func EmptyQueue(w http.ResponseWriter, r *http.Request) {
+  var tlist []turn
+  params := mux.Vars(r)
+  if room, ok := rooms[params["name"]]; ok {
+    tlist = room.Queue.TurnList
+    room.Queue.TurnList = room.Queue.TurnList[:0]
+  }
+  json.NewEncoder(w).Encode(tlist) 
+}
+        
 // main function to boot up everything
 func main() {
     router := mux.NewRouter()
-    rooms = append(rooms, room{Name: "Monkey Island", Queue: queue{TurnList: []turn{{Attendee: attendee{Name: "Maxi"}}, {Attendee: attendee{Name: "Manu"}}}}})
-    rooms = append(rooms, room{Name: "Gotham", Queue: queue{TurnList: []turn{{Attendee: attendee{Name: "Maxi"}}, {Attendee: attendee{Name: "Manu"}}}}})
-    rooms = append(rooms, room{Name: "New New York", Queue: queue{TurnList: []turn{{Attendee: attendee{Name: "Maxi"}}, {Attendee: attendee{Name: "Manu"}}}}})
-    router.HandleFunc("/room", GetRooms).Methods("GET")    
-    router.HandleFunc("/room/{name}", GetRoom).Methods("GET")
-//    router.HandleFunc("/room/{name}/queue", EnQueue).Methods("POST")
-//    router.HandleFunc("/room/{name}/queue", DeQueue).Methods("DELETE")
-//    router.HandleFunc("/room//queue", EmptyQueue).Methods("DELETE")    
-    log.Fatal(http.ListenAndServe(":8000", router))
+    rooms = map[string]*room {
+      "Monkey Island": &room{Name: "Monkey Island", Queue: queue{TurnList: []turn{}}},
+      "Gotham":        &room{Name: "Gotham",        Queue: queue{TurnList: []turn{}}},
+      "New New York":  &room{Name: "New New York",  Queue: queue{TurnList: []turn{}}},
+    }  
+//  "New New York": &room{Name: "New New York", Queue: queue{TurnList: []turn{{Attendee: attendee{Name: "Maxi"}}, {Attendee: attendee{Name: "Manu"}}}}},      
+
+    router.HandleFunc("/room", DisplayRooms).Methods("GET")    
+    router.HandleFunc("/room/{name}", DisplayRoom).Methods("GET")
+    router.HandleFunc("/room/{name}/queue", EnQueue).Methods("POST")
+    router.HandleFunc("/room/{name}/queue", DeQueue).Methods("DELETE")
+    router.HandleFunc("/room/{name}", EmptyQueue).Methods("DELETE")    
+    log.Fatal(http.ListenAndServe(":8080", router))
 }

@@ -1,0 +1,33 @@
+version: '3.1'
+
+services:
+  mysql:
+    image: mysql:8.0.11
+    restart: always
+    volumes:
+      - ./datadir:/var/lib/mysql 
+      - ./initdb/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      MYSQL_ROOT_PASSWORD: slapdb
+      MYSQL_DATABASE: slapdb
+      MYSQL_USER: slapdb
+      MYSQL_PASSWORD: slapdb
+    ports:
+      - "3306:3306"
+
+  slap:
+    environment:
+      - DBHOST=mysql
+      - DBUSER=slapdb
+      - DBUPASS=slapdb
+      - DBNAME=slapdb
+      - DBPORT=3306
+    image: bestsecret/slap
+    build: .
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+
+      

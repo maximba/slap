@@ -1,0 +1,19 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "jG3DOcEsXMKec2sq12ZVqEdHWnE=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "7413002f368fba928eefaf762c91a2acfeabdf68",
+			"revisionTime": "2018-05-30T10:02:58Z"
+		},
+		{
+			"checksumSHA1": "gzYAE/UJ+G7yTqkdJAMActxDdxw=",
+			"path": "github.com/gorilla/mux",
+			"revision": "c0091a029979286890368b4c7b301261e448e242",
+			"revisionTime": "2018-01-20T07:58:19Z"
+		}
+	],
+	"rootPath": "slap"
+}

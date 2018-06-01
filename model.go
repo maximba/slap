@@ -38,7 +38,7 @@ func ConnectDB() *sql.DB {
 
 func GetTurnListDB(db *sql.DB, room_id int) ([]turn){
 	turnlist :=  []turn{}
-	rows, err := db.Query("SELECT attendee FROM turn WHERE room_id = $1 ORDER BY priority ASC", room_id)
+	rows, err := db.Query("SELECT attendee FROM turn WHERE room_id=? ORDER BY priority ASC", room_id)
 	if (err != nil) {
 		log.Fatal(err)
 	}	
@@ -75,12 +75,12 @@ func GetRoomsDB(db *sql.DB, rooms map[string]*room) {
 
 func EnQueueDB(db *sql.DB, room string, attendee string) {
 	var room_id int
-        err := db.QueryRow("SELECT id FROM rooms WHERE name=$1", room).Scan(&room_id)
+        err := db.QueryRow("SELECT id FROM rooms WHERE name=?", room).Scan(&room_id)
         if err != nil {
         	log.Fatal(err)
         }
         
-	_,  err = db.Exec("INSERT INTO turn (room_id, attendee) VALUES ($1,$2)", room_id, attendee)
+	_,  err = db.Exec("INSERT INTO turn (room_id, attendee) VALUES (?,?)", room_id, attendee)
 	if (err !=nil) {
 		log.Fatal(err)
 	}
@@ -89,19 +89,19 @@ func EnQueueDB(db *sql.DB, room string, attendee string) {
 func DeQueueDB(db *sql.DB, room string, attendee string) {
 	var room_id int
 	
-        err := db.QueryRow("SELECT id FROM rooms WHERE name=$1", room).Scan(&room_id)
+        err := db.QueryRow("SELECT id FROM rooms WHERE name=?", room).Scan(&room_id)
         if err != nil {
                 log.Fatal(err)
         }
-        _, err = db.Exec("DELETE FROM turn WHERE (room_id=$1 AND attendee=$2)", room_id, attendee)
+        _, err = db.Exec("DELETE FROM turn WHERE (room_id=? AND attendee=?)", room_id, attendee)
 }
 
 func EmptyQueueDB(db *sql.DB, room string) {
         var room_id int
 
-        err := db.QueryRow("SELECT id FROM rooms WHERE name=$1", room).Scan(&room_id)
+        err := db.QueryRow("SELECT id FROM rooms WHERE name=?", room).Scan(&room_id)
         if err != nil {
                 log.Fatal(err)
         }
-        _, err = db.Exec("DELETE FROM turn WHERE room_id=$1", room_id)
+        _, err = db.Exec("DELETE FROM turn WHERE room_id=?", room_id)
 }

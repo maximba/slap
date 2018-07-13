@@ -19,3 +19,4 @@ USE slapdb
 INSERT INTO rooms (name) VALUES ('Monkey Island');
 INSERT INTO rooms (name) VALUES ('Gotham');
 INSERT INTO rooms (name) VALUES ('New New York');
+INSERT INTO rooms (name) VALUES ('Kitchen');

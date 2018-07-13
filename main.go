@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	_ "fmt"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -32,16 +33,8 @@ type attendee struct {
 var rooms map[string]*room
 var db *sql.DB
 
-// Enable cors
-func enableCors(w *http.ResponseWriter) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-}
-
 // Display all from the rooms var
 func DisplayRooms(w http.ResponseWriter, r *http.Request) {
-	// Enable cors
-	enableCors(&w)
-
 	// Get latest data from DB
 	GetRoomsDB(db, rooms)
 
@@ -57,9 +50,6 @@ func DisplayRooms(w http.ResponseWriter, r *http.Request) {
 
 // Display a single data
 func DisplayRoom(w http.ResponseWriter, r *http.Request) {
-	// Enable cors
-	enableCors(&w)
-
 	// Get latest data from DB
 	GetRoomsDB(db, rooms)
 
@@ -72,9 +62,6 @@ func DisplayRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func EnQueue(w http.ResponseWriter, r *http.Request) {
-	// Enable cors
-	enableCors(&w)
-
 	type attendee_id struct {
 		Attendee_id string `json:"attendee_id"`
 	}
@@ -89,9 +76,6 @@ func EnQueue(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeQueue(w http.ResponseWriter, r *http.Request) {
-	// Enable cors
-	enableCors(&w)
-
 	type attendee_id struct {
 		Attendee_id string `json:"attendee_id"`
 	}
@@ -106,9 +90,6 @@ func DeQueue(w http.ResponseWriter, r *http.Request) {
 }
 
 func EmptyQueue(w http.ResponseWriter, r *http.Request) {
-	// Enable cors
-	enableCors(&w)
-
 	var tlist []turn
 	params := mux.Vars(r)
 	room_name := params["name"]
@@ -131,6 +112,11 @@ func main() {
 	router.HandleFunc("/room/{name}/queue", EnQueue).Methods("POST")
 	router.HandleFunc("/room/{name}/queue", DeQueue).Methods("DELETE")
 	router.HandleFunc("/room/{name}", EmptyQueue).Methods("DELETE")
-	log.Fatal(http.ListenAndServe(":8080", router))
+
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "DELETE", "POST", "PUT", "OPTIONS"})
+
+	log.Fatal(http.ListenAndServe(":8080", handlers.CORS(headersOk, originsOk, methodsOk)(router)))
 	db.Close()
 }

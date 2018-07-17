@@ -2,12 +2,13 @@ package main
 
 import (
 	_ "bytes"
+	"database/sql"
 	"encoding/json"
 	_ "fmt"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-	"database/sql"
 )
 
 type room struct {
@@ -34,11 +35,24 @@ var db *sql.DB
 
 // Display all from the rooms var
 func DisplayRooms(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(rooms)
+	// Get latest data from DB
+	GetRoomsDB(db, rooms)
+
+	var room_array []room
+
+	for _, m := range rooms {
+		room_array = append(room_array, *m)
+	}
+	roomlist := make(map[string]interface{})
+	roomlist["roomList"] = room_array
+	json.NewEncoder(w).Encode(roomlist)
 }
 
 // Display a single data
 func DisplayRoom(w http.ResponseWriter, r *http.Request) {
+	// Get latest data from DB
+	GetRoomsDB(db, rooms)
+
 	params := mux.Vars(r)
 	if room, ok := rooms[params["name"]]; ok {
 		json.NewEncoder(w).Encode(room)
@@ -52,31 +66,27 @@ func EnQueue(w http.ResponseWriter, r *http.Request) {
 		Attendee_id string `json:"attendee_id"`
 	}
 
-	var att attendee
+	var atid attendee_id
 	params := mux.Vars(r)
 	room_name := params["name"]
-	if room, ok := rooms[room_name]; ok {
-		var atid attendee_id
-		_ = json.NewDecoder(r.Body).Decode(&atid)
-		if atid.Attendee_id != "" {
-			att = attendee{Name: atid.Attendee_id}
-			room.Queue.TurnList = append(room.Queue.TurnList, turn{att})
-		}
-	}
-	EnQueueDB(db, room_name, att.Name)
-	json.NewEncoder(w).Encode(att)
+	_ = json.NewDecoder(r.Body).Decode(&atid)
+
+	EnQueueDB(db, room_name, atid.Attendee_id)
+	json.NewEncoder(w).Encode("Ok")
 }
 
 func DeQueue(w http.ResponseWriter, r *http.Request) {
-	var att attendee
-	params := mux.Vars(r)
-	room_name :=params["name"]
-	if room, ok := rooms[room_name]; ok {
-		att = room.Queue.TurnList[0].Attendee
-		room.Queue.TurnList = room.Queue.TurnList[1:]
+	type attendee_id struct {
+		Attendee_id string `json:"attendee_id"`
 	}
-	DeQueueDB(db, room_name, att.Name)
-	json.NewEncoder(w).Encode(att)
+
+	var atid attendee_id
+	params := mux.Vars(r)
+	room_name := params["name"]
+	_ = json.NewDecoder(r.Body).Decode(&atid)
+
+	DeQueueDB(db, room_name, atid.Attendee_id)
+	json.NewEncoder(w).Encode("Ok")
 }
 
 func EmptyQueue(w http.ResponseWriter, r *http.Request) {
@@ -93,23 +103,20 @@ func EmptyQueue(w http.ResponseWriter, r *http.Request) {
 
 // main function to boot up everything
 func main() {
+	db = ConnectDB()
 	router := mux.NewRouter()
 	rooms = make(map[string]*room)
-	/*    rooms = map[string]*room {
-	        "Monkey Island": &room{Name: "Monkey Island", Queue: queue{TurnList: []turn{}}},
-	        "Gotham":        &room{Name: "Gotham",        Queue: queue{TurnList: []turn{}}},
-	        "New New York":  &room{Name: "New New York",  Queue: queue{TurnList: []turn{}}},
-	      }
-	*/
-	//  "New New York": &room{Name: "New New York", Queue: queue{TurnList: []turn{{Attendee: attendee{Name: "Maxi"}}, {Attendee: attendee{Name: "Manu"}}}}},
 
 	router.HandleFunc("/room", DisplayRooms).Methods("GET")
 	router.HandleFunc("/room/{name}", DisplayRoom).Methods("GET")
 	router.HandleFunc("/room/{name}/queue", EnQueue).Methods("POST")
 	router.HandleFunc("/room/{name}/queue", DeQueue).Methods("DELETE")
 	router.HandleFunc("/room/{name}", EmptyQueue).Methods("DELETE")
-	db = ConnectDB()
-	defer db.Close()
-	GetRoomsDB(db, rooms)
-	log.Fatal(http.ListenAndServe(":8080", router))
+
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "DELETE", "POST", "PUT", "OPTIONS"})
+
+	log.Fatal(http.ListenAndServe(":8080", handlers.CORS(headersOk, originsOk, methodsOk)(router)))
+	db.Close()
 }

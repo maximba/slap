@@ -3,8 +3,8 @@ package main
 import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
-	"os"
 	"log"
+	"os"
 )
 
 func ConnectDB() *sql.DB {
@@ -36,20 +36,20 @@ func ConnectDB() *sql.DB {
 	return db
 }
 
-func GetTurnListDB(db *sql.DB, room_id int) ([]turn){
-	turnlist :=  []turn{}
+func GetTurnListDB(db *sql.DB, room_id int) []turn {
+	turnlist := []turn{}
 	rows, err := db.Query("SELECT attendee FROM turn WHERE room_id=? ORDER BY priority ASC", room_id)
-	if (err != nil) {
+	if err != nil {
 		log.Fatal(err)
-	}	
+	}
 	var attendee_id string
 	var att attendee
 	for rows.Next() {
-               if err := rows.Scan(&attendee_id); err != nil {
-                        log.Fatal(err)
-                }
-                att = attendee{Name: attendee_id}                
-                turnlist = append(turnlist, turn{att})                
+		if err := rows.Scan(&attendee_id); err != nil {
+			log.Fatal(err)
+		}
+		att = attendee{Name: attendee_id}
+		turnlist = append(turnlist, turn{att})
 	}
 	return turnlist
 }
@@ -63,7 +63,7 @@ func GetRoomsDB(db *sql.DB, rooms map[string]*room) {
 
 	var name string
 	var id int
-	
+
 	for rows.Next() {
 		if err := rows.Scan(&id, &name); err != nil {
 			log.Fatal(err)
@@ -75,33 +75,33 @@ func GetRoomsDB(db *sql.DB, rooms map[string]*room) {
 
 func EnQueueDB(db *sql.DB, room string, attendee string) {
 	var room_id int
-        err := db.QueryRow("SELECT id FROM rooms WHERE name=?", room).Scan(&room_id)
-        if err != nil {
-        	log.Fatal(err)
-        }
-        
-	_,  err = db.Exec("INSERT INTO turn (room_id, attendee) VALUES (?,?)", room_id, attendee)
-	if (err !=nil) {
+	err := db.QueryRow("SELECT id FROM rooms WHERE name=?", room).Scan(&room_id)
+	if err != nil {
 		log.Fatal(err)
 	}
-} 
+
+	_, err = db.Exec("INSERT INTO turn (room_id, attendee) VALUES (?,?)", room_id, attendee)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 func DeQueueDB(db *sql.DB, room string, attendee string) {
 	var room_id int
-	
-        err := db.QueryRow("SELECT id FROM rooms WHERE name=?", room).Scan(&room_id)
-        if err != nil {
-                log.Fatal(err)
-        }
-        _, err = db.Exec("DELETE FROM turn WHERE (room_id=? AND attendee=?)", room_id, attendee)
+
+	err := db.QueryRow("SELECT id FROM rooms WHERE name=?", room).Scan(&room_id)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = db.Exec("DELETE FROM turn WHERE (room_id=? AND attendee=?)", room_id, attendee)
 }
 
 func EmptyQueueDB(db *sql.DB, room string) {
-        var room_id int
+	var room_id int
 
-        err := db.QueryRow("SELECT id FROM rooms WHERE name=?", room).Scan(&room_id)
-        if err != nil {
-                log.Fatal(err)
-        }
-        _, err = db.Exec("DELETE FROM turn WHERE room_id=?", room_id)
+	err := db.QueryRow("SELECT id FROM rooms WHERE name=?", room).Scan(&room_id)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = db.Exec("DELETE FROM turn WHERE room_id=?", room_id)
 }

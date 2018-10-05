@@ -154,15 +154,15 @@ func (mc *mysqlConn) writePacket(data []byte) error {
 
 // Handshake Initialization Packet
 // http://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::Handshake
-func (mc *mysqlConn) readHandshakePacket() ([]byte, string, error) {
-	data, err := mc.readPacket()
+func (mc *mysqlConn) readHandshakePacket() (data []byte, plugin string, err error) {
+	data, err = mc.readPacket()
 	if err != nil {
 		// for init we can rewrite this to ErrBadConn for sql.Driver to retry, since
 		// in connection initialization we don't risk retrying non-idempotent actions.
 		if err == ErrInvalidConn {
 			return nil, "", driver.ErrBadConn
 		}
-		return nil, "", err
+		return
 	}
 
 	if data[0] == iERR {
@@ -198,7 +198,6 @@ func (mc *mysqlConn) readHandshakePacket() ([]byte, string, error) {
 	}
 	pos += 2
 
-	plugin := ""
 	if len(data) > pos {
 		// character set [1 byte]
 		// status flags [2 bytes]
@@ -236,8 +235,6 @@ func (mc *mysqlConn) readHandshakePacket() ([]byte, string, error) {
 		return b[:], plugin, nil
 	}
 
-	plugin = defaultAuthPlugin
-
 	// make a memory safe copy of the cipher slice
 	var b [8]byte
 	copy(b[:], authData)
@@ -270,7 +267,16 @@ func (mc *mysqlConn) writeHandshakeResponsePacket(authResp []byte, addNUL bool, 
 		clientFlags |= clientMultiStatements
 	}
 
-	pktLen := 4 + 4 + 1 + 23 + len(mc.cfg.User) + 1 + 1 + len(authResp) + 21 + 1
+	// encode length of the auth plugin data
+	var authRespLEIBuf [9]byte
+	authRespLEI := appendLengthEncodedInteger(authRespLEIBuf[:0], uint64(len(authResp)))
+	if len(authRespLEI) > 1 {
+		// if the length can not be written in 1 byte, it must be written as a
+		// length encoded integer
+		clientFlags |= clientPluginAuthLenEncClientData
+	}
+
+	pktLen := 4 + 4 + 1 + 23 + len(mc.cfg.User) + 1 + len(authRespLEI) + len(authResp) + 21 + 1
 	if addNUL {
 		pktLen++
 	}
@@ -342,8 +348,8 @@ func (mc *mysqlConn) writeHandshakeResponsePacket(authResp []byte, addNUL bool, 
 	pos++
 
 	// Auth Data [length encoded integer]
-	data[pos] = byte(len(authResp))
-	pos += 1 + copy(data[pos+1:], authResp)
+	pos += copy(data[pos:], authRespLEI)
+	pos += copy(data[pos:], authResp)
 	if addNUL {
 		data[pos] = 0x00
 		pos++
@@ -1252,7 +1258,7 @@ func (rows *binaryRows) readRow(dest []driver.Value) error {
 						rows.rs.columns[i].decimals,
 					)
 				}
-				dest[i], err = formatBinaryDateTime(data[pos:pos+int(num)], dstlen, true)
+				dest[i], err = formatBinaryTime(data[pos:pos+int(num)], dstlen)
 			case rows.mc.parseTime:
 				dest[i], err = parseBinaryDateTime(num, data[pos:], rows.mc.cfg.Loc)
 			default:
@@ -1272,7 +1278,7 @@ func (rows *binaryRows) readRow(dest []driver.Value) error {
 						)
 					}
 				}
-				dest[i], err = formatBinaryDateTime(data[pos:pos+int(num)], dstlen, false)
+				dest[i], err = formatBinaryDateTime(data[pos:pos+int(num)], dstlen)
 			}
 
 			if err == nil {

@@ -26,7 +26,7 @@ services:
     build: .
     restart: always
     ports:
-      - "8080:8080"
+      - "1234:8080"
     depends_on:
       - mysql
 

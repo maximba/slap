@@ -16,7 +16,12 @@ CREATE TABLE IF NOT EXISTS turn (
 
 USE slapdb
 
-INSERT INTO rooms (name) VALUES ('Monkey Island');
-INSERT INTO rooms (name) VALUES ('Gotham');
-INSERT INTO rooms (name) VALUES ('New New York');
+INSERT INTO rooms (name) VALUES ('Monza');
+INSERT INTO rooms (name) VALUES ('Marina Bay');
+INSERT INTO rooms (name) VALUES ('Montmelo');
+INSERT INTO rooms (name) VALUES ('Silverstone');
+INSERT INTO rooms (name) VALUES ('Suzuka');
+INSERT INTO rooms (name) VALUES ('Hockenheim');
+INSERT INTO rooms (name) VALUES ('Indianapolis');
 INSERT INTO rooms (name) VALUES ('Kitchen');
+
